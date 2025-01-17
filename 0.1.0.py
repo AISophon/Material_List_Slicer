@@ -1,0 +1,130 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Material List Slicer
+Version 0.1.0
+Author: Decent_Kook
+
+This is a Python program for splitting a list of projected materials,
+Users can customize weighted number, correlation coefficient and special item list.
+
+2025.01.14
+"""
+
+import pandas as pd
+
+# 设定划分标准（用户自行决定）
+weighted_number = 1728 * 5  # 单任务加权数最大值
+ordinary_coefficient = 1  # 普通物品系数
+specific_coefficient = 2  # 特殊物品系数
+kind_coefficient = 500  # 物品种类系数
+specific_item = []  # 特殊物品
+
+# 读取csv文件
+path = "material_list.csv"
+df = pd.read_csv(path, usecols=["Item", "Total"])
+
+# 处理列表
+quantity_used = 0
+row_index = 0
+row_max = len(df)
+output = []
+task = []
+sum = 0
+
+# 获取物品种类和数量
+kind = df.iloc[row_index, 0]  # 物品种类
+quantity = df.iloc[row_index, 1]  # 物品数量
+
+# 强制转换 np.int64 为 int
+quantity = int(quantity)
+
+# 配对任务
+while row_index < row_max:
+    # 判断物品系数
+    if kind in specific_item:
+        coefficient = specific_coefficient
+    else:
+        coefficient = ordinary_coefficient
+
+    if weighted_number > quantity * coefficient + sum:
+        task.append([kind, quantity])
+
+        # 计算加权数
+        sum += quantity * coefficient + kind_coefficient
+        if sum >= weighted_number:
+            output.append(task)
+            task = []
+            sum = 0
+        row_index += 1
+        quantity_used = 0
+
+        # 获取物品种类和数量
+        if row_index >= row_max:
+            output.append(task)
+            break
+        kind = df.iloc[row_index, 0]  # 物品种类
+        quantity = df.iloc[row_index, 1]  # 物品数量
+
+        # 强制转换 np.int64 为 int
+        quantity = int(quantity)
+
+    elif weighted_number == quantity * coefficient + sum:
+        task.append([kind, quantity])
+        output.append(task)
+        task = []
+        row_index += 1
+        sum = 0
+        quantity_used = 0
+
+        # 获取物品种类和数量
+        if row_index >= row_max:
+            break
+        kind = df.iloc[row_index, 0]  # 物品种类
+        quantity = df.iloc[row_index, 1]  # 物品数量
+
+        # 强制转换 np.int64 为 int
+        quantity = int(quantity)
+    elif weighted_number < quantity * coefficient + sum:
+        while weighted_number < quantity + sum:
+            quantity -= 1
+        if quantity <= 0:
+            print("quantity_need error: ", kind, quantity)
+        task.append([kind, quantity])
+        output.append(task)
+        task = []
+        sum = 0
+        quantity_used = quantity_used + quantity
+        quantity = int(df.iloc[row_index, 1]) - quantity_used
+
+# 输出Excel
+flattened_data = []
+for sublist in output:
+    for item in sublist:
+        flattened_data.append(item)
+
+# 用于存储展平后的数据
+flattened_data = []
+
+# 展平数据并添加组别信息
+for idx, sublist in enumerate(output, 1):  # 使用enumerate为每个子列表添加组编号
+    for item in sublist:
+        # 将每个数据项和它所属的组号一起存储
+        flattened_data.append([idx] + item)
+
+# 创建 DataFrame，并设置列名
+df = pd.DataFrame(flattened_data, columns=["Task", "Item", "Total"])
+
+# 输出到Excel文件
+df.to_excel("output.xlsx", index=False)
+
+print("The Excel file was successfully saved as output.xlsx")
+
+# 测试输出
+# print(output)
+
+# 测试类型（测试用）
+"""
+a = a
+print('读取出数据的类型是：', type(a))
+"""
